@@ -84,8 +84,7 @@ fish-started test herdr is not a regression.
 - `docs/cockpit/STITCH_DIRECTION.md` + `docs/cockpit/stitch/` (3 screens, awaiting approval)
 - `docs/cockpit/OPUS_REVIEW_PROMPT.md`
 
-No V1 implementation task has started yet. Next: owner approves/rejects architecture and Stitch
-direction; then Batch 0.
+No V1 implementation task has started yet. See the checkpoint at the end.
 
 ## Batch 0 — spike results (2026-10-10, read-only)
 
@@ -189,3 +188,27 @@ Diagnosis (environment, not code):
 **Gate rule (extends the fish rule above):** acceptance runs use herdr 0.9.3 on `PATH` (scratch
 copy, checksum `18a8dc65…4dba7` as in `ci.yml`) and `SHELL=/bin/bash`. The red results above under
 herdr 0.9.0 or zsh are not regressions. Mac and Linux user herdr stay at 0.9.0 (no upgrade done).
+
+## Checkpoint (2026-10-11)
+
+HEAD: see `git log -1` on `planning/cockpit-v1` (this checkpoint's commit; parent `d002a57`).
+
+Approved decisions:
+- Architecture rev 2, on condition that every offline/cached answer carries explicit
+  `freshness: fresh | stale | unavailable` and is never treated as current.
+- Stitch O1–O8 (see `STITCH_DIRECTION.md`).
+- Mac OpenCode 1.x: list metadata from `session`; transcript/conversation `unsupported`. No legacy
+  reader, no OpenCode upgrade on the Mac.
+- Remote bundle: fork gets its own bundle dir, registry, version line and manifest; never reuses
+  or overwrites upstream `remote-v25`. No change on the Mac before Batch 10 and new approval.
+- Batch 0 closed; findings folded into plan cards B2–B5 and B10.
+
+Baseline gate: herdr **0.9.3** first on `PATH` (scratch copy, sha256 as in `ci.yml`) and
+`SHELL=/bin/bash`; `bun run check full` (or `fast` + `integration browser`). Red results under
+herdr 0.9.0 or a fish/zsh pane shell are environment, not regressions.
+
+Next batch: **Batch 1** (shared contract + demo stubs), not started.
+
+Real blockers: none for Batch 1. Before Batch 10: the fork bundle namespace has to be written
+(code, inert until deployed) and the owner approves the Mac deployment. Open, non-blocking:
+local herdr is 0.9.0 vs CI's 0.9.3; `reattach.contract` needs bash in this environment.

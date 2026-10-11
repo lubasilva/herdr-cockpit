@@ -8,8 +8,9 @@ Revised 2026-10-10 after the Opus architecture review. Supersedes revision 1 (pe
 - **Status:** Architecture rev 2 APPROVED 2026-10-10, on condition that every offline cache
   answer carries explicit `freshness: "fresh" | "stale" | "unavailable"` and is never treated
   as current. Stitch O1–O8 approved (see `STITCH_DIRECTION.md`); O4 moves usage to a compact
-  header readout with detail on demand (Batch 9). Batch 0 authorized as a strictly
-  non-destructive spike; the upstream Mac bridge / `:7317` install must not be changed. Batches 0 and 10 contain external
+  header readout with detail on demand (Batch 9). Batch 0 CLOSED 2026-10-11 (results in
+  `CURRENT_STATE.md`, folded into B2–B5 and B10). Next: Batch 1. The upstream Mac bridge /
+  `:7317` install must not be changed without new approval. Batches 0 and 10 contain external
   effects (Mac deployment) and need explicit owner approval at the time they run.
 
 ## Global rules for every worker
@@ -127,6 +128,8 @@ export async function probeRepo(cwd: string, opts?: { timeoutMs?: number; now?: 
 // rev-list --max-parents=0 HEAD (first line). 2 s per call, Bun.spawn with array args, no shell.
 // Cached per cwd, TTL 10 min; missing cwd → null (cached 1 min).
 ```
+Batch 0: `root_commit` always comes from this git probe. OpenCode's `project.id` is a machine-local
+id from `<repo>/.git/opencode` and never equals the root commit; do not use it for identity.
 **Tests.** `HERDR_TEST_MODE=unit bun test ./server/history/identity.test.ts` — table of URL forms;
 temp git repos built with `git init` + one commit (+ a worktree, + a repo without remote); missing
 dir; non-git dir; cache hit does not spawn twice.
@@ -140,23 +143,33 @@ dir; non-git dir; cache hit does not spawn twice.
 **Files.** `server/history/codex.ts`, `server/history/opencode.ts`, `server/history/profiles.ts`
 (enumerate stores: Codex homes by the `server/usage.ts:355` rule — import or replicate the small
 `siblingDirs` logic, do not edit `usage.ts`; OpenCode via `opencodeDatabasePath`; Claude via
-`defaultClaudeConfigDir` / `CLAUDE_CONFIG_DIR`), tests beside each.
+`defaultClaudeConfigDir` / `CLAUDE_CONFIG_DIR`), tests beside each. A `.claude-*` sibling counts as
+a Claude store only if it has a `projects/` dir (Batch 0: `~/.claude-server-commander` has none).
 
 Rules:
 - Codex: `SELECT id, cwd, title, first_user_message, created_at, updated_at, git_branch,
-  git_origin_url, model FROM threads WHERE archived = 0 AND agent_role IS NULL AND <interactive
-  source> AND updated_at >= ? ORDER BY updated_at DESC LIMIT ?`. Check the column set with
+  git_origin_url, model FROM threads WHERE archived = 0 AND source IN ('cli','vscode') AND
+  (thread_source = 'user' OR thread_source IS NULL) AND updated_at >= ? ORDER BY updated_at DESC LIMIT ?`. Check the column set with
   `PRAGMA table_info` first; a missing column → that home is skipped and counted.
   `profile` = home dir basename (`.codex`, `.codex-pro-2`). `resumable` = `native` for the
-  default home, per Batch 0 result for others.
-- OpenCode: `session_v2` where `parent_id IS NULL AND time_archived IS NULL`, joined to `project`
-  for `worktree`/`vcs`; `repo.root_commit` = `project.id` only if Batch 0 confirmed it.
+  default home, `fresh-only` for others (Batch 0: `agent.start` takes no env, so `CODEX_HOME`
+  cannot be set). Batch 0: subagent rows also have `agent_role IS NULL` (their `source` is JSON
+  `{"subagent":…}`, `thread_source` `subagent`/`guardian_review`); `exec` is non-interactive.
+  `created_at`/`updated_at` are unix seconds.
+- OpenCode 2.x (has `session_v2`): `session_v2` where `parent_id IS NULL AND time_archived IS
+  NULL`, joined to `project` for `worktree`/`vcs`. Never `repo.root_commit` = `project.id`
+  (Batch 0: 0/15 match); identity comes from Batch 2.
+- OpenCode 1.x (no `session_v2`, e.g. the Mac's 1.18): metadata only from `session` (same filter;
+  columns `directory`, `title`, `time_updated`). Rows carry `conversation: "unsupported"` (owner
+  decision 2026-10-11): no legacy `message`/`part` reader, no OpenCode upgrade on the Mac.
+  Choose the table by `sqlite_master`, not by version string.
 - Titles: native title, else first user message; one line, ≤120 chars.
 - In-memory cache keyed by `(dbPath, MAX(updated_at), mtime)`.
 
 **Tests.** `HERDR_TEST_MODE=unit bun test ./server/history/codex.test.ts ./server/history/opencode.test.ts ./server/history/profiles.test.ts`
 with SQLite fixtures created in temp dirs (copy the column list, not data, from the real schema);
-cover archived, subagent, missing table, locked/corrupt file → skipped.
+cover archived, subagent (JSON `source` with NULL `agent_role`), `exec`, NULL `thread_source`
+`vscode`, OpenCode 1.x vs 2.x schema, missing table, locked/corrupt file → skipped.
 **Tier.** Cheap. Codex ✔ Sonnet ✔ DeepSeek ✔.
 **Gate.** Reviewer checks readonly open and that no path leaves the module except internally.
 
@@ -167,7 +180,8 @@ full-file parse.
 
 **Files.** `server/history/claude.ts`, `server/history/claude.test.ts`.
 
-Rules: only `^[0-9a-f-]{36}\.jsonl$` at depth 1 (skip `subagents/`, `*.meta.json`); `updated_at`
+Rules: stores without `projects/` are skipped (Batch 0); only `^[0-9a-f-]{36}\.jsonl$` at depth 1
+(skip `subagents/`, `memory/`, `*.meta.json`); `updated_at`
 = mtime; read at most the first 64 KB, line by line, for `cwd`, `gitBranch`, a `summary` record
 or the first human `user` text (skip tool results, meta, command wrappers); malformed lines are
 skipped; files younger than the window only (`days`). Cache per file by `(mtime, size)`.
@@ -189,12 +203,16 @@ fields inside the first 64 KB, non-UUID file, subagent dir).
   existing resolvers (`opencodeSessionId`, `claudePaneSession`, `codexTranscriptPath`); sort by
   `updated_at`; cap with `truncated`.
 - `server/history/read.ts`: `HistoryRef` → canonical path (Claude: `claudeTranscriptFile`;
-  Codex: `threads.rollout_path` → `codexRolloutPath`; OpenCode: session exists in DB) →
+  Codex: `threads.rollout_path` → `codexRolloutPath`; OpenCode: session exists in DB; OpenCode 1.x
+  → 501 `unsupported` with that reason, never an empty transcript) →
   `transcriptPage` / `opencodeConversation`, `transcriptToolOutput` / `opencodeToolOutput`,
   `transcriptImage` / `opencodeImage`. Keep their ETag/`version` behaviour.
 - `server/history/resume.ts`: `resumeCheck(ref)` → session exists, cwd exists on this machine,
   no live pane holds it (`live_elsewhere` + `live_pane_id`), profile supported; returns
-  `{ kind, args, cwd }` with Batch 0's exact flags. Read-only.
+  `{ kind, args, cwd }` with Batch 0's exact flags (`claude --resume <id>`, `codex resume <id>`
+  + `-C <cwd>`, `opencode <cwd> -s <id>`). Read-only. Batch 0: OpenCode 2.x `-s` **creates** a
+  session when the id is unknown, so the id must be confirmed in the local DB in the same check;
+  any doubt → `session_missing`, never a resume.
 - `server/history/http.ts`: `handleHistoryRequest(req, url, deps): Promise<Response | null>`
   for `GET /api/history/{sessions,conversation,conversation/tool-output,conversation/image,resume-check}`;
   non-GET → 405; unknown `/api/history/*` → `null` so the existing 404 answers.
@@ -306,14 +324,19 @@ first; screenshots only from `herdr-web-ui-demo` or a test session.
 **Objective.** Run the fork's server code on the Mac bridge.
 
 Steps (owner present):
-1. Pick the fork bundle version rule (DESIGN §8): `REMOTE_BUNDLE_VERSION` stays numeric
-   (`newerBundle` only accepts `^\d+$`); fork uses a number that cannot collide with upstream's
-   next releases only after owner agreement, or keeps upstream's number and relies on the local
-   manifest — decided in Batch 0.
+1. Fork namespace (owner decision 2026-10-11; prepared in code before this batch, inert until
+   deployed): the cockpit never reuses or overwrites upstream's `remote-v25`, manifest or bridge
+   registry. Own bundle base dir (e.g. `~/.local/share/herdr-cockpit/remote-v<N>`, today
+   `server/remote-host.ts:23`), own registry dir (not `~/.config/herdr-web-ui/bridges/`), own
+   numeric version line (`newerBundle` accepts only `^\d+$`), own manifest (local file or fork
+   release; not `devswha` URLs, `server/remote-bundle.ts:20`), and the `bundle-older` probe must
+   not match upstream dirs. Contract-test that an upstream `remote-v25` present on the host is
+   neither reported ready nor touched.
 2. `bun run build:remote darwin-arm64`; place the manifest at
    `remote-bundles/manifest-darwin-arm64.json` (or `HERDR_WEB_BUNDLE_MANIFEST`).
-3. Ensure only the fork connection server manages the Mac (upstream install on `:7317`
-   disconnected from the Mac or stopped).
+3. With separate namespaces both bridges can coexist on the Mac; still, only one connection
+   server should drive a given Mac pane. Any change to the upstream `:7317` setup needs new owner
+   approval.
 4. Update the bridge through the existing UI flow. Record the result in the agent handoff as
    `outcome_unknown` until step 5 passes.
 5. Verify: `/api/history/machines/<mac>/sessions` answers from the Mac.
