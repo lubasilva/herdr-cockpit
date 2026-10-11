@@ -86,3 +86,106 @@ fish-started test herdr is not a regression.
 
 No V1 implementation task has started yet. Next: owner approves/rejects architecture and Stitch
 direction; then Batch 0.
+
+## Batch 0 — spike results (2026-10-10, read-only)
+
+Method: local CLI `--help`, `sqlite3 "file:…?mode=ro"` (schema, counts, ids only — no message
+content read), `ssh -o BatchMode=yes macbook` read-only commands, local bundle build into a
+scratch dir. Nothing was installed, restarted or written on the Mac; `:7317` untouched.
+
+### Versions
+
+| | Linux | Mac (`macbook`, Darwin arm64, macOS 27.0.1, zsh) |
+|---|---|---|
+| herdr | 0.9.0 | 0.9.0 (installed upstream bundle `remote-v25` ships herdr 0.9.3) |
+| Claude Code | 2.1.296 | 2.1.296 |
+| Codex CLI | 0.162.1 | 0.161.0 |
+| OpenCode | **2.0.23** | **1.18.35** |
+| Bun / Node | 1.4.3 / v26.10.0 | not on PATH / v24.7.0 (bundle carries bun 1.4.2, node v22.23.2) |
+| git, sqlite3 | yes | yes (Apple Git 2.54.0) |
+
+### 1. Resume syntax
+
+- Claude: `claude --resume <uuid>` (`-r`); `--fork-session` exists. Not exercised (would create
+  state); cwd scoping assumed per store layout `projects/<cwd-slug>/<uuid>.jsonl` → start in the
+  session's cwd.
+- Codex (both PCs): `codex resume [SESSION_ID] [PROMPT]`; `-C/--cd <DIR>` sets the working root,
+  so resume can pass the cwd explicitly. `-p` layers `$CODEX_HOME/<name>.config.toml`; it does
+  **not** select a home.
+- OpenCode Linux 2.x: `opencode [directory] -s <id>` — help says "continue, **or create if it does
+  not exist**": a wrong/foreign id silently creates a new session → resume-check must verify the id
+  exists in the local DB first. Mac 1.x: `opencode [project] -s <id>` (no create clause).
+
+### 2. Codex homes
+
+- Both PCs: `~/.codex` and `~/.codex-pro-2` only (Mac also has `~/.codexbar`, not a Codex home;
+  the `.codex-` prefix rule excludes it). No `~/.config/codex`, no `CODEX_HOME` set.
+- Linux `codex2` is a fish function that sets `CODEX_HOME=~/.codex-pro-2`.
+- herdr 0.9.0 `agent.start` = `{name, kind, pane_id, args?, timeout_ms?}` — no env; `--kind codex`
+  runs the canonical executable. No herdr config hook found. **Decision: `.codex-pro-2` sessions
+  are `resumable: "fresh-only"` in V1** (as planned).
+- Schema (`state_5.sqlite`, both PCs): `threads` has every planned column, `created_at`/`updated_at`
+  are unix **seconds** (`*_ms` columns also exist); ids are 36-char UUID(v7).
+- **Plan correction:** subagent threads have `agent_role IS NULL` too. Their `source` is a JSON
+  string `{"subagent":…}` and `thread_source` is `subagent`/`guardian_review`. Interactive filter
+  must be `source IN ('cli','vscode') AND (thread_source = 'user' OR thread_source IS NULL)`
+  (Mac has 13 old `vscode` rows with NULL `thread_source`). `exec` = non-interactive, excluded.
+
+### 3. OpenCode project identity
+
+- `project.id` **never** equals `rev-list --max-parents=0 HEAD` (0/15 repos on Linux). It comes
+  from the machine-local `<repo>/.git/opencode` file. **Decision: never use `project.id` as
+  `root_commit`; Batch 2 `probeRepo` computes it from git.**
+
+### 4. Store schemas per PC (blocking divergence)
+
+- Linux OpenCode 2.x: `session_v2` (+ legacy `session`), messages in `session_message`
+  (what upstream `server/opencode.ts` reads). Session ids `ses_` + 26 chars (30 total).
+- Mac OpenCode 1.x: **no `session_v2`**; sessions in `session` (906 children / 284 top-level),
+  messages in `message`/`part`; `session_message` exists but is empty. The upstream conversation
+  reader cannot read Mac OpenCode history. **V1 options (owner):** (a) list Mac OpenCode from
+  `session` (columns `parent_id`, `time_archived`, `directory`, `title` present) and mark
+  conversation `unsupported`; (b) upgrade OpenCode on the Mac (not authorized); (c) write a 1.x
+  reader (scope growth). Recommendation: (a).
+- Claude: default `~/.claude` on both; `CLAUDE_CONFIG_DIR` unset. `~/.claude-server-commander`
+  matches the `.claude-` sibling rule but has no `projects/` → lister must require `projects/`.
+  Linux: 43 UUID transcripts at depth 2, 0 non-UUID; `memory/` dirs present at depth 2 (skip).
+  Mac: 5 project dirs.
+
+### 5. Deployment dry run
+
+- `bun run build`: PASS. `HERDR_BUNDLE_OUTPUT=<scratch> bun run build:remote darwin-arm64`: PASS —
+  `herdr-web-ui-darwin-arm64.tgz` 104,346,474 B, sha256 `f0c9dbae…186a0ccc`, manifest
+  `manifest-darwin-arm64.json` `{version:"25"}`. Downloads are pinned + checksummed; PTY not
+  executed (cross-platform).
+- Mac today: `~/.local/share/herdr-web-ui/remote-v25/` (+ `remote-v25-81f0020c2f771355`),
+  `bundle.json` `{version:"25", herdr:"0.9.3"}`; `remote-entry.ts` running from that bundle; bridge
+  registry in `~/.config/herdr-web-ui/bridges/`.
+- **Blocking finding:** the fork reuses `REMOTE_BUNDLE_VERSION = "25"` and the same paths
+  (`server/remote-host.ts:23` `BUNDLE_DIR`, the `bridges/` registry) and the manifest URL points at
+  `devswha/herdr-web-ui` releases (`server/remote-bundle.ts:20`). As-is the fork would see
+  `bundle-ready`, keep running upstream code on the Mac (no `/api/history`), or overwrite the
+  upstream install if forced. Batch 10 must give the fork its own namespace (bundle dir, registry
+  dir, version, local manifest) **or** the owner retires the upstream `:7317` Mac connection first.
+  No action taken.
+
+### Baseline before Batch 1 (2026-10-10, HEAD c2586b1, code identical to upstream `5792d71`)
+
+| Run | Result |
+|---|---|
+| `bun run check full`, system herdr **0.9.0**, `SHELL=zsh` | fast lane PASS (actionlint, generated types, typecheck, build, unit **2459 pass / 8 skip / 0 fail**); integration **385/5 fail**; browser FAIL (`ui-regression.ts`: "Delete anyway" dialog never shown) |
+| `bun run check integration browser`, CI's pinned herdr **0.9.3** on a scratch `PATH` (system herdr untouched), `SHELL=zsh` | browser **PASS** (all scripts); integration **388/2 fail** (both in `reattach.contract.test.ts`) |
+| `check run … reattach.contract.test.ts`, herdr 0.9.3, `SHELL=zsh`, ×2 | 2/2 fail both times (deterministic) |
+| same, `SHELL=/bin/bash` | **4/4 PASS** |
+
+Diagnosis (environment, not code):
+- herdr 0.9.0 vs 0.9.3: 0.9.0 answers `invalid_request` instead of `pane_not_found`, has no
+  `pane clear` route answer, and reports worktree removal as `worktree_remove_failed` instead of
+  `dirty_worktree_requires_force` (which is also the browser "Delete anyway" failure). CI pins
+  0.9.3; the README floor says 0.9.0+.
+- `reattach.contract.test.ts` spawns its own herdr for the live handoff without the empty
+  `ZDOTDIR` that `scripts/test-herdr.ts` sets, so a zsh pane reads `~/.zshrc`.
+
+**Gate rule (extends the fish rule above):** acceptance runs use herdr 0.9.3 on `PATH` (scratch
+copy, checksum `18a8dc65…4dba7` as in `ci.yml`) and `SHELL=/bin/bash`. The red results above under
+herdr 0.9.0 or zsh are not regressions. Mac and Linux user herdr stay at 0.9.0 (no upgrade done).
