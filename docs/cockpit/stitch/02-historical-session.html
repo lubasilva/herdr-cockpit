@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<title>Herdr Cockpit — Historical Session</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: IBM Plex Sans & JetBrains Mono & Public Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Public+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {},
+          borderRadius: {
+            DEFAULT: "0.125rem",
+            lg: "0.25rem",
+            xl: "0.5rem",
+            full: "0.75rem"
+          },
+          fontFamily: {
+            headline: ["IBM Plex Sans", "sans-serif"],
+            display: ["IBM Plex Sans", "sans-serif"],
+            body: ["IBM Plex Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #12100e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2d2924;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3e3830;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-[#12100e] text-[#d8d0c3] font-body text-[13px] leading-[1.45] h-screen w-screen overflow-hidden flex flex-col select-none antialiased">
+<!-- ================= TOP NAVIGATION BAR ================= -->
+<header class="w-full h-10 px-3 flex items-center justify-between border-b border-[#2d2924] bg-[#181613] z-30 shrink-0 font-headline text-[13px]">
+<!-- Left: Brand & Context Breadcrumb -->
+<div class="flex items-center space-x-3"><div class="flex items-center space-x-1.5 cursor-pointer"><span class="w-2 h-2 rounded-full bg-[#f0a830] inline-block"></span><span class="font-headline text-[13px] font-semibold text-[#f2ebdf] tracking-tight">Herdr Cockpit</span></div></div>
+<!-- Center: Project context -->
+<div class="hidden md:flex items-center space-x-1.5 text-[12px] font-mono text-[#9b9183]">
+<span class="text-[#d8d0c3] font-medium">Projeto EAD</span>
+<span class="text-[#443e37]">›</span>
+<span>Claude</span>
+<span class="text-[#443e37]">·</span>
+<span>Opus 4</span>
+<span class="text-[#443e37]">·</span>
+<span>Mac</span>
+<span class="text-[#443e37]">·</span>
+<span class="text-[#b8ad9e]">⎇ feat/lucia</span>
+</div>
+<!-- Right: Host status badges & Trailing actions -->
+<div class="flex items-center space-x-3 text-[12px]">
+<!-- Host badges -->
+<div class="flex items-center space-x-2 bg-[#211e1a] px-2 py-0.5 rounded border border-[#2d2924]">
+<div class="flex items-center space-x-1" title="Linux Worker connected">
+<span class="w-1.5 h-1.5 rounded-full bg-[#93c36b]"></span>
+<span class="text-[#9b9183] text-[11px] font-mono">Linux</span>
+</div>
+<span class="text-[#3e3830]">·</span>
+<div class="flex items-center space-x-1" title="Mac Worker connected">
+<span class="w-1.5 h-1.5 rounded-full bg-[#93c36b]"></span>
+<span class="text-[#9b9183] text-[11px] font-mono">Mac</span>
+</div>
+</div>
+<!-- Quick command pallete trigger -->
+<kbd class="hidden sm:inline-block font-mono text-[10px] text-[#9b9183] bg-[#211e1a] border border-[#2d2924] px-1.5 py-0.5 rounded">⌘⇧K</kbd>
+<!-- Icons -->
+<div class="flex items-center space-x-1 text-[#9b9183]">
+<button class="w-6 h-6 flex items-center justify-center hover:bg-[#2a2621] hover:text-[#d8d0c3] rounded transition-colors" title="Notifications">
+<span class="material-symbols-outlined text-[15px]">notifications</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center hover:bg-[#2a2621] hover:text-[#d8d0c3] rounded transition-colors" title="Cluster Settings">
+<span class="material-symbols-outlined text-[15px]">tune</span>
+</button>
+</div>
+</div>
+</header>
+<!-- ================= APP WORKSPACE BODY ================= -->
+<div class="flex-1 flex overflow-hidden">
+<!-- ================= LEFT SIDEBAR (Projects & Sessions Tree) ================= -->
+<aside class="w-[272px] h-full flex flex-col justify-between border-r border-[#2d2924] bg-[#181613] shrink-0 select-none">
+<!-- Top Section: Tree Header & Project Accordions -->
+<div class="flex flex-col flex-1 overflow-y-auto">
+<!-- Switcher tabs: Projects | PCs -->
+<div class="p-2 pb-1.5 border-b border-[#2d2924] flex items-center justify-between">
+<div class="grid grid-cols-2 bg-[#12100e] p-0.5 rounded border border-[#2d2924] w-full mr-2 text-[11px] font-medium">
+<button class="py-1 text-center bg-[#211e1a] text-[#f2ebdf] rounded-sm transition-all shadow-sm">Projects</button>
+<button class="py-1 text-center text-[#9b9183] hover:text-[#d8d0c3] transition-colors">PCs</button>
+</div>
+<button class="w-6 h-6 shrink-0 bg-[#211e1a] hover:bg-[#2a2621] border border-[#2d2924] rounded flex items-center justify-center text-[#9b9183] hover:text-[#f2ebdf] transition-colors" title="Create or Clone Project">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- Section Label -->
+<div class="px-3 pt-3 pb-1 flex items-center justify-between font-headline text-[11px] uppercase tracking-[0.06em] text-[#9b9183] font-medium">
+<span>PROJECTS</span>
+<span class="text-[10px] font-mono text-[#786f63]">3 ACTIVE</span>
+</div>
+<!-- Tree List -->
+<div class="px-1.5 space-y-0.5">
+<!-- Active Expanded Project: Projeto EAD -->
+<div class="mb-1">
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#f2ebdf] font-medium text-[12.5px] group">
+<div class="flex items-center space-x-1.5 truncate">
+<span class="material-symbols-outlined text-[13px] text-[#9b9183]">arrow_drop_down</span>
+<span class="truncate">Projeto EAD</span>
+</div>
+<span class="text-[10px] font-mono px-1.5 py-0.2 bg-[#211e1a] text-[#9b9183] border border-[#2d2924] rounded">2 PCs</span>
+</div>
+<!-- Sessions under Projeto EAD -->
+<div class="ml-2 pl-2 border-l border-[#2d2924] space-y-0.5 mt-0.5">
+<!-- Session 1: Active Working -->
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#d8d0c3]">
+<div class="flex items-center space-x-2 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-[#6cb8d6] shrink-0" title="Working"></span>
+<div class="flex flex-col truncate">
+<span class="truncate text-[13px] group-hover:text-[#f2ebdf]">Refactor enrollment API</span>
+<span class="text-[10.5px] font-mono text-[#9b9183]">Claude · Linux · now</span>
+</div>
+</div>
+</div>
+<!-- Session 2: Needs attention -->
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#d8d0c3]">
+<div class="flex items-center space-x-2 truncate">
+<span class="w-1.5 h-1.5 rounded-full bg-[#ff7b70] shrink-0" title="Blocked / Needs you"></span>
+<div class="flex flex-col truncate">
+<span class="truncate text-[13px] group-hover:text-[#f2ebdf]">Fix flaky checkout test</span>
+<span class="text-[10.5px] font-mono text-[#9b9183]">Codex · Mac · 2m</span>
+</div>
+</div>
+</div>
+<!-- Session 3: SELECTED HISTORICAL (Prominent amber bar marker) -->
+<div class="flex items-center justify-between px-2 py-1.5 rounded bg-[#211e1a] border-l-2 border-[#f0a830] cursor-pointer group text-[#f2ebdf]"><div class="flex items-center space-x-2 truncate"><span class="material-symbols-outlined text-[13px] text-[#9b9183] shrink-0">radio_button_unchecked</span><div class="flex flex-col truncate"><span class="truncate text-[13px] font-medium text-[#f2ebdf]">Migrate auth to Lucia</span><span class="text-[10.5px] font-mono text-[#9b9183]">Claude · Mac · 21:14</span></div></div></div>
+<!-- Session 4: Historical inactive -->
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#9b9183] hover:text-[#d8d0c3]">
+<div class="flex items-center space-x-2 truncate">
+<span class="material-symbols-outlined text-[13px] text-[#786f63] shrink-0">radio_button_unchecked</span>
+<div class="flex flex-col truncate">
+<span class="truncate text-[13px]">Seed script cleanup</span>
+<span class="text-[10.5px] font-mono text-[#786f63]">Codex2 · Linux · 18:20</span>
+</div>
+</div>
+</div>
+<!-- Session 5: Historical inactive -->
+<div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#9b9183] hover:text-[#d8d0c3]">
+<div class="flex items-center space-x-2 truncate">
+<span class="material-symbols-outlined text-[13px] text-[#786f63] shrink-0">radio_button_unchecked</span>
+<div class="flex flex-col truncate">
+<span class="truncate text-[13px]">Course export bug</span>
+<span class="text-[10.5px] font-mono text-[#786f63]">OpenCode · Linux · Yesterday</span>
+</div>
+</div>
+</div>
+<!-- Pagination / More link -->
+<div class="pt-1 pb-1 px-2">
+<button class="text-[11px] font-mono text-[#786f63] hover:text-[#9b9183] flex items-center space-x-1 transition-colors">
+<span>Show 14 older...</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Collapsed Projects List -->
+<div class="space-y-0.5 pt-1"><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">CotaPay</span></div><span class="text-[10px] font-mono px-1 text-[#6cb8d6] bg-[#12100e] border border-[#2d2924] rounded">1 live</span></div><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">Transporte</span></div></div><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">Echo</span></div></div><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">Fabrica</span></div></div></div>
+</div>
+</div>
+<!-- Footer: Host Quotas & Documentation/Shell Links -->
+<div class="border-t border-[#2d2924] bg-[#181613] p-2.5 space-y-2.5 shrink-0">
+<!-- Quotas Meter -->
+<div class="space-y-1.5"><div class="flex items-center justify-between font-headline text-[11px] uppercase tracking-[0.06em] text-[#9b9183] font-medium pb-0.5"><span>PLAN LIMITS</span></div>
+<div class="flex items-center justify-between text-[11px] font-mono">
+<span class="text-[#786f63] uppercase">Claude 5h Quota</span>
+<span class="text-[#f0a830]">72%</span>
+</div>
+<div class="w-full bg-[#12100e] h-1.5 rounded-full overflow-hidden border border-[#2d2924]">
+<div class="bg-[#f0a830] h-full w-[72%]"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono pt-1">
+<span class="text-[#786f63] uppercase">Codex Quota</span>
+<span class="text-[#9b9183]">18%</span>
+</div>
+<div class="w-full bg-[#12100e] h-1.5 rounded-full overflow-hidden border border-[#2d2924]">
+<div class="bg-[#9b9183] h-full w-[18%]"></div>
+</div>
+</div>
+</div>
+</aside>
+<!-- ================= MAIN READ-ONLY ARCHIVE AREA ================= -->
+<main class="flex-1 flex flex-col h-full bg-[#12100e] overflow-hidden relative">
+<!-- 1. Session Header (Historical read-only indicator) -->
+<section class="border-b border-[#2d2924] bg-[#181613] px-6 py-3 flex items-center justify-between shrink-0">
+<div class="flex flex-col space-y-1">
+<div class="flex items-center space-x-2.5">
+<h1 class="text-[15px] font-semibold text-[#f2ebdf] tracking-tight">Migrate auth to Lucia</h1>
+<!-- Dashed Mono Read-only Badge -->
+<span class="inline-flex items-center text-[10.5px] font-mono text-[#9b9183] border border-dashed border-[#443e37] bg-[#1b1916] px-2 py-0.5 rounded tracking-wider">
+              HISTORY · read-only
+            </span>
+</div>
+<!-- Detailed Metadata String -->
+<div class="text-[11.5px] font-mono text-[#9b9183] flex flex-wrap items-center gap-x-2 gap-y-0.5">
+<span>Claude</span>
+<span class="text-[#443e37]">·</span>
+<span>Opus 4</span>
+<span class="text-[#443e37]">·</span>
+<span>Mac (MacBook Pro)</span>
+<span class="text-[#443e37]">·</span>
+<span class="text-[#786f63]">/Users/ipremium/Projects/projeto-ead</span>
+<span class="text-[#443e37]">·</span>
+<span class="text-[#b8ad9e]">⎇ feat/lucia</span>
+<span class="text-[#443e37]">·</span>
+<span>Oct 9, 21:14 → 22:03</span>
+<span class="text-[#443e37]">·</span>
+<span class="text-[#786f63]">48 turns</span>
+</div>
+</div>
+<!-- Right Side: Archive Disclosure Dropdown Button (NO live toggle) -->
+<div class="flex items-center space-x-2">
+<button class="px-2.5 py-1 text-[12px] font-headline text-[#9b9183] hover:text-[#d8d0c3] bg-[#211e1a] border border-[#2d2924] rounded flex items-center space-x-1.5 transition-colors">
+<span>Details</span>
+<span class="material-symbols-outlined text-[13px]">expand_more</span>
+</button>
+</div>
+</section>
+<!-- 2. Historical Notice Banner Strip -->
+<section class="bg-[#1a1815] border-b border-[#2d2924] px-6 py-2 flex items-center gap-2.5 text-[12px] text-[#b8ad9e] shrink-0">
+<span class="material-symbols-outlined text-[#9b9183] text-[15px]">history</span>
+<div class="flex-1 flex flex-wrap items-center gap-1 leading-tight">
+<span>You are reading a past Claude session from Mac. Nothing you type here is sent. The live agent for this project is</span>
+<span class="text-[#f0a830] font-medium hover:underline cursor-pointer inline-flex items-center gap-0.5">
+            “Refactor enrollment API” on Linux →
+          </span>
+</div>
+</section>
+<!-- 3. Conversation Transcript Scroll Area -->
+<div class="flex-1 overflow-y-auto px-4 py-6">
+<div class="max-w-[760px] mx-auto w-full space-y-6 pb-2">
+<!-- Earlier Turns Collapsed Loader -->
+<div class="flex justify-center">
+<button class="text-[11px] font-mono text-[#9b9183] border border-[#2d2924] rounded px-3 py-1 bg-[#181613] hover:text-[#d8d0c3] hover:border-[#3e3830] transition-colors flex items-center space-x-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[12px]">unfold_more</span>
+<span>Load earlier turns (36 hidden)</span>
+</button>
+</div>
+<!-- Turn 1 -->
+<div class="space-y-3">
+<div class="flex items-center space-x-2 text-[11px] font-mono text-[#786f63]">
+<span>21:14</span>
+<span class="text-[#3e3830]">———</span>
+<span>User prompt</span>
+</div>
+<!-- User Bubble -->
+<div class="bg-[#211e1a] border border-[#2d2924] text-[#d8d0c3] p-3.5 rounded-md text-[13px] leading-relaxed shadow-sm">
+              Replace express-session and custom JWT validation with Lucia auth v3 in <code class="font-mono text-[#f0a830] bg-[#181613] px-1 py-0.5 rounded text-[12px]">src/auth</code>. Keep session cookies httpOnly and configure Prisma adapter.
+            </div>
+<!-- Assistant Response -->
+<div class="space-y-3 pl-1 pt-1">
+<!-- Folded Tool Execution Block -->
+<div class="bg-[#1b1916] border border-[#2d2924] text-[12px] font-mono text-[#9b9183] px-3 py-1.5 rounded flex items-center justify-between cursor-pointer hover:border-[#3e3830] transition-colors">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[13px] text-[#786f63]">play_arrow</span>
+<span class="text-[#d8d0c3]">Worked 3m 40s</span>
+<span class="text-[#443e37]">·</span>
+<span>14 tools</span>
+<span class="text-[#443e37]">·</span>
+<span>Edit 6</span>
+<span class="text-[#443e37]">·</span>
+<span>Bash 3</span>
+</div>
+<span class="text-[10px] text-[#786f63]">click to inspect</span>
+</div>
+<!-- Assistant Text -->
+<div class="text-[#d8d0c3] text-[13.5px] leading-[1.6]">
+                I have analyzed the current auth flow in <code class="font-mono text-[12px] text-[#f2ebdf] bg-[#181613] px-1 py-0.5 rounded border border-[#2d2924]">src/auth/session.ts</code> and initialized the Lucia instance configured with <code class="font-mono text-[12px] text-[#f2ebdf] bg-[#181613] px-1 py-0.5 rounded border border-[#2d2924]">@lucia-auth/adapter-prisma</code>.
+              </div>
+<!-- Code Snippet Block -->
+<div class="bg-[#181613] border border-[#2d2924] rounded-md overflow-hidden text-[12px] font-mono">
+<!-- Code Header -->
+<div class="bg-[#141210] px-3 py-1.5 border-b border-[#2d2924] flex items-center justify-between text-[#786f63]">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[13px] text-[#9b9183]">code</span>
+<span class="text-[#9b9183]">src/auth/lucia.ts</span>
+</div>
+<span class="text-[10.5px]">TypeScript</span>
+</div>
+<!-- Code Content -->
+<div class="p-3.5 overflow-x-auto text-[#d8d0c3] leading-relaxed space-y-1">
+<div><span class="text-[#9b9183]">import</span> { Lucia } <span class="text-[#9b9183]">from</span> <span class="text-[#93c36b]">"lucia"</span>;</div>
+<div><span class="text-[#9b9183]">import</span> { PrismaAdapter } <span class="text-[#9b9183]">from</span> <span class="text-[#93c36b]">"@lucia-auth/adapter-prisma"</span>;</div>
+<div><span class="text-[#9b9183]">import</span> { prisma } <span class="text-[#9b9183]">from</span> <span class="text-[#93c36b]">"../db"</span>;</div>
+<div class="text-[#786f63] pt-1">// Initialize adapter instance</div>
+<div><span class="text-[#9b9183]">const</span> adapter = <span class="text-[#9b9183]">new</span> PrismaAdapter(prisma.session, prisma.user);</div>
+<div class="pt-1"><span class="text-[#9b9183]">export const</span> lucia = <span class="text-[#9b9183]">new</span> Lucia(adapter, {</div>
+<div class="pl-4">sessionCookie: {</div>
+<div class="pl-8">attributes: {</div>
+<div class="pl-12">secure: process.env.NODE_ENV === <span class="text-[#93c36b]">"production"</span>,</div>
+<div class="pl-12">httpOnly: <span class="text-[#6cb8d6]">true</span>,</div>
+<div class="pl-12">sameSite: <span class="text-[#93c36b]">"lax"</span></div>
+<div class="pl-8">}</div>
+<div class="pl-4">}</div>
+<div>});</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Turn 2 -->
+<div class="space-y-3 pt-2">
+<div class="flex items-center space-x-2 text-[11px] font-mono text-[#786f63]">
+<span>21:22</span>
+<span class="text-[#3e3830]">———</span>
+<span>Turn 42</span>
+</div>
+<!-- Folded Tool Execution Block -->
+<div class="bg-[#1b1916] border border-[#2d2924] text-[12px] font-mono text-[#9b9183] px-3 py-1.5 rounded flex items-center justify-between cursor-pointer hover:border-[#3e3830] transition-colors">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-[13px] text-[#786f63]">play_arrow</span>
+<span class="text-[#d8d0c3]">Worked 1m 15s</span>
+<span class="text-[#443e37]">·</span>
+<span>4 tools</span>
+<span class="text-[#443e37]">·</span>
+<span>Read 3</span>
+<span class="text-[#443e37]">·</span>
+<span>Edit 2</span>
+</div>
+<span class="text-[10px] text-[#786f63]">click to inspect</span>
+</div>
+<!-- Assistant Explanation -->
+<div class="text-[#d8d0c3] text-[13.5px] leading-[1.6]">
+              Migrated middleware checks and cookie handlers. The database migration schema is generated and tested with local mock sessions.
+            </div>
+</div>
+<!-- Turn 3 (Conclusion) -->
+<div class="space-y-3 pt-2">
+<div class="flex items-center space-x-2 text-[11px] font-mono text-[#786f63]">
+<span>21:40</span>
+<span class="text-[#3e3830]">———</span>
+<span>Turn 48 · Session final</span>
+</div>
+<div class="text-[#d8d0c3] text-[13.5px] leading-[1.6]">
+              All integration tests for <code class="font-mono text-[12px] text-[#f2ebdf] bg-[#181613] px-1 py-0.5 rounded border border-[#2d2924]">lucia.validateSession()</code> pass. Auth routes <code class="font-mono text-[12px] text-[#f2ebdf] bg-[#181613] px-1 py-0.5 rounded border border-[#2d2924]">/api/auth/login</code> and <code class="font-mono text-[12px] text-[#f2ebdf] bg-[#181613] px-1 py-0.5 rounded border border-[#2d2924]">/api/auth/logout</code> are updated.
+            </div>
+</div>
+</div>
+</div>
+<!-- 4. Historical Action Bar (In place of live input composer) -->
+<section class="shrink-0 p-4 pt-1 bg-gradient-to-t from-[#12100e] via-[#12100e] to-transparent">
+<div class="max-w-[760px] mx-auto w-full bg-[#181613] border border-[#2d2924] rounded-lg p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+<!-- Left: Information regarding resumption -->
+<div class="flex flex-col">
+<div class="flex items-center space-x-2">
+<span class="text-[13px] font-semibold text-[#f2ebdf]">Continue this session?</span>
+<span class="text-[10px] font-mono px-1.5 py-0.2 bg-[#211e1a] text-[#9b9183] border border-[#2d2924] rounded">standby</span>
+</div>
+<div class="text-[11px] font-mono text-[#9b9183] mt-0.5">
+              Resumes natively on Mac · Claude · ~/Projects/projeto-ead · branch feat/lucia
+            </div>
+</div>
+<!-- Right: Buttons -->
+<div class="flex flex-col items-end space-y-1">
+<div class="flex items-center space-x-2">
+<button class="border border-[#38332c] text-[#d8d0c3] text-[12px] px-3 py-1.5 rounded hover:bg-[#211e1a] hover:text-[#f2ebdf] cursor-pointer transition-colors">
+                Start fresh continuation
+              </button>
+<button class="bg-[#f0a830] text-[#12100e] font-medium text-[12px] px-3.5 py-1.5 rounded flex items-center space-x-1.5 hover:bg-[#e09820] cursor-pointer transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[13px]">play_arrow</span>
+<span>Resume on Mac</span>
+</button>
+</div>
+<span class="text-[10px] text-[#786f63] font-body text-right">
+              Fresh starts an empty Claude session in the same project. The old transcript is not replayed.
+            </span>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

@@ -55,19 +55,34 @@ The upstream repository currently documents Herdr `0.9.0+`, while parts of curre
 
 ## Baseline verification
 
+Re-verified 2026-10-10 (Opus review) on upstream `5792d71` + docs commits, no cockpit code:
+
 - dependency install: PASS
-- TypeScript typecheck: PASS
-- full `bun test`: started from pristine upstream fork and produced multiple timing/contract failures before being intentionally stopped to avoid spending more time on a known-red baseline
-- `server/output.contract.test.ts` was re-run alone and the `observer high watermark` timeout reproduced, so it is **not proven to be only full-suite load**
+- `bun run typecheck`: PASS
+- `bun run test:unit`: **2459 pass, 8 skip, 0 fail** (185 files)
+- `server/output.contract.test.ts` alone, 3 runs: **3/7 failing every run** (`observer high
+  watermark`, `pause at high watermark`, `the retried attach streams the pane`)
+- **Root cause: environment, not upstream code and not cockpit.** The reused isolated test herdr
+  (`herdr-web-ui-test`) had been started from a fish shell, so its panes ran fish. The tests type
+  POSIX syntax into panes (`echo attach-$((6*7))`), which fish rejects. `scripts/test-herdr.ts`
+  only neutralises zsh startup files (`ZDOTDIR`). The `node not found` lines in the log are the
+  test's deliberate `breakPath()` stub.
+- After `herdr --session herdr-web-ui-test server stop` and a re-run with `SHELL=/usr/bin/zsh`:
+  **7/7 pass**.
+- Not run in this pass: full `bun test`, `bun run build`, `bun run test:ui`, `bun run check full`.
 
-These failures existed before any cockpit implementation code was added.
-
-Likely investigation axes include Herdr/runtime version compatibility and local test-environment assumptions. Do not attribute them to cockpit changes and do not fix unrelated upstream behavior unless required by the feature.
+**Rule for every worker and acceptance gate:** this PC's login shell is fish. Run contract and
+integration lanes through `bun run check …` (own herdr) or from zsh/bash with `SHELL=/usr/bin/zsh`,
+after stopping any leftover `herdr-web-ui-test` session. A red `output.contract` under a
+fish-started test herdr is not a regression.
 
 ## Planning artifacts
 
-- `docs/cockpit/DESIGN.md`
-- `docs/cockpit/IMPLEMENTATION_PLAN.md`
+- `docs/cockpit/DESIGN.md` (revision 2)
+- `docs/cockpit/IMPLEMENTATION_PLAN.md` (revision 2, batch cards)
+- `docs/cockpit/OPUS_ARCHITECTURE_REVIEW.md`
+- `docs/cockpit/STITCH_DIRECTION.md` + `docs/cockpit/stitch/` (3 screens, awaiting approval)
 - `docs/cockpit/OPUS_REVIEW_PROMPT.md`
 
-No V1 implementation task has started yet.
+No V1 implementation task has started yet. Next: owner approves/rejects architecture and Stitch
+direction; then Batch 0.

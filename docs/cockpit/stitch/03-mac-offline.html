@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<title>Herdr Cockpit — Historical Session</title>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: IBM Plex Sans & JetBrains Mono & Public Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Public+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {},
+          borderRadius: {
+            DEFAULT: "0.125rem",
+            lg: "0.25rem",
+            xl: "0.5rem",
+            full: "0.75rem"
+          },
+          fontFamily: {
+            headline: ["IBM Plex Sans", "sans-serif"],
+            display: ["IBM Plex Sans", "sans-serif"],
+            body: ["IBM Plex Sans", "sans-serif"],
+            label: ["Public Sans", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #12100e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #2d2924;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3e3830;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-[#12100e] text-[#d8d0c3] font-body text-[13px] leading-[1.45] h-screen w-screen overflow-hidden flex flex-col select-none antialiased">
+<!-- ================= TOP NAVIGATION BAR ================= -->
+<header class="w-full h-10 px-3 flex items-center justify-between border-b border-[#2d2924] bg-[#181613] z-30 shrink-0 font-headline text-[13px]">
+<!-- Left: Brand & Context Breadcrumb -->
+<div class="flex items-center space-x-3"><div class="flex items-center space-x-1.5 cursor-pointer"><span class="w-2 h-2 rounded-full bg-[#f0a830] inline-block"></span><span class="font-headline text-[13px] font-semibold text-[#f2ebdf] tracking-tight">Herdr Cockpit</span></div></div>
+<!-- Center: Project context -->
+<div class="hidden md:flex items-center space-x-1.5 text-[12px] font-mono text-[#9b9183]">
+<span class="text-[#d8d0c3] font-medium">Projeto EAD</span>
+<span class="text-[#443e37]">›</span>
+<span>Claude</span>
+<span class="text-[#443e37]">·</span>
+<span>Opus 4</span>
+<span class="text-[#443e37]">·</span>
+<span>Mac</span>
+<span class="text-[#443e37]">·</span>
+<span class="text-[#b8ad9e]">⎇ feat/lucia</span>
+</div>
+<!-- Right: Host status badges & Trailing actions -->
+<div class="flex items-center space-x-3 text-[12px]">
+<!-- Host badges -->
+<div class="flex items-center space-x-2 bg-[#211e1a] px-2 py-0.5 rounded border border-[#2d2924]"><div class="flex items-center space-x-1.5" title="Linux Worker connected"><span class="text-[#9b9183] text-[11px] font-mono">Linux</span><span class="w-1.5 h-1.5 rounded-full bg-[#93c36b]"></span></div><span class="text-[#3e3830]">·</span><div class="flex items-center space-x-1.5 text-[#786f63]" title="Mac Worker disconnected"><span class="w-2 h-2 rounded-full border border-dashed border-[#786f63] inline-block"></span><span class="text-[11px] font-mono text-[#786f63]">Mac <span class="text-[10px] text-[#443e37]">offline · retrying in 32s</span></span></div></div>
+<!-- Quick command pallete trigger -->
+<kbd class="hidden sm:inline-block font-mono text-[10px] text-[#9b9183] bg-[#211e1a] border border-[#2d2924] px-1.5 py-0.5 rounded">⌘⇧K</kbd>
+<!-- Icons -->
+<div class="flex items-center space-x-1 text-[#9b9183]">
+<button class="w-6 h-6 flex items-center justify-center hover:bg-[#2a2621] hover:text-[#d8d0c3] rounded transition-colors" title="Notifications">
+<span class="material-symbols-outlined text-[15px]">notifications</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center hover:bg-[#2a2621] hover:text-[#d8d0c3] rounded transition-colors" title="Cluster Settings"><span class="material-symbols-outlined text-[15px]">settings</span></button>
+</div>
+</div>
+</header>
+<!-- ================= APP WORKSPACE BODY ================= -->
+<div class="flex-1 flex overflow-hidden">
+<!-- ================= LEFT SIDEBAR (Projects & Sessions Tree) ================= -->
+<aside class="w-[272px] h-full flex flex-col justify-between border-r border-[#2d2924] bg-[#181613] shrink-0 select-none">
+<!-- Top Section: Tree Header & Project Accordions -->
+<div class="flex flex-col flex-1 overflow-y-auto">
+<!-- Switcher tabs: Projects | PCs -->
+<div class="p-2 pb-1.5 border-b border-[#2d2924] flex items-center justify-between">
+<div class="grid grid-cols-2 bg-[#12100e] p-0.5 rounded border border-[#2d2924] w-full mr-2 text-[11px] font-medium">
+<button class="py-1 text-center bg-[#211e1a] text-[#f2ebdf] rounded-sm transition-all shadow-sm">Projects</button>
+<button class="py-1 text-center text-[#9b9183] hover:text-[#d8d0c3] transition-colors">PCs</button>
+</div>
+<button class="w-6 h-6 shrink-0 bg-[#211e1a] hover:bg-[#2a2621] border border-[#2d2924] rounded flex items-center justify-center text-[#9b9183] hover:text-[#f2ebdf] transition-colors" title="Create or Clone Project">
+<span class="material-symbols-outlined text-[14px]">add</span>
+</button>
+</div>
+<!-- Section Label -->
+<div class="px-3 pt-3 pb-1 flex items-center justify-between font-headline text-[11px] uppercase tracking-[0.06em] text-[#9b9183] font-medium">
+<span>PROJECTS</span>
+<span class="text-[10px] font-mono text-[#786f63]">3 ACTIVE</span>
+</div>
+<!-- Tree List -->
+<div class="px-1.5 space-y-0.5"><div class="mb-1"><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#f2ebdf] font-medium text-[12.5px] group"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#9b9183]">arrow_drop_down</span><span class="truncate">Projeto EAD</span></div><div class="flex items-center space-x-1"><span class="text-[10px] font-mono px-1.5 py-0.2 bg-[#211e1a] text-[#9b9183] border border-[#2d2924] rounded">2 PCs <span class="text-[#786f63]">(1 off)</span></span></div></div><div class="ml-2 pl-2 border-l border-[#2d2924] space-y-0.5 mt-0.5"><div class="flex items-center px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#d8d0c3]"><div class="flex items-center space-x-2 truncate"><span class="w-2 h-2 rounded-full bg-[#6cb8d6] shrink-0" title="Working"></span><div class="flex flex-col truncate"><span class="truncate text-[13px] group-hover:text-[#f2ebdf]">Refactor enrollment API</span><span class="text-[10.5px] font-mono text-[#9b9183]">Claude · Linux · now</span></div></div></div><div class="flex items-center px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#786f63] opacity-60"><div class="flex items-center space-x-2 truncate"><span class="w-2.5 h-2.5 rounded-full border border-dashed border-[#786f63] inline-block shrink-0" title="Offline"></span><div class="flex flex-col truncate"><span class="truncate text-[13px] text-[#9b9183]">Fix flaky checkout test</span><span class="text-[10.5px] font-mono text-[#786f63]">Codex · Mac · last seen 14:02</span></div></div></div><div class="flex items-center px-2 py-1.5 rounded bg-[#211e1a] border-l-2 border-[#f0a830] cursor-pointer group text-[#d8d0c3]"><div class="flex items-center space-x-2 truncate"><span class="w-2.5 h-2.5 rounded-full border border-dashed border-[#f0a830] inline-block shrink-0" title="Offline"></span><div class="flex flex-col truncate"><span class="truncate text-[13px] font-medium text-[#f2ebdf]">Migrate auth to Lucia</span><span class="text-[10.5px] font-mono text-[#9b9183]">Claude · Mac · 21:14 · offline</span></div></div></div><div class="flex items-center px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#9b9183] hover:text-[#d8d0c3]"><div class="flex items-center space-x-2 truncate"><span class="w-2.5 h-2.5 rounded-full border border-[#786f63] inline-block shrink-0" title="Historical"></span><div class="flex flex-col truncate"><span class="truncate text-[13px]">Seed script cleanup</span><span class="text-[10.5px] font-mono text-[#786f63]">Codex2 · Linux · 18:20</span></div></div></div><div class="flex items-center px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer group text-[#9b9183] hover:text-[#d8d0c3]"><div class="flex items-center space-x-2 truncate"><span class="w-2.5 h-2.5 rounded-full border border-[#786f63] inline-block shrink-0" title="Historical"></span><div class="flex flex-col truncate"><span class="truncate text-[13px]">Course export bug</span><span class="text-[10.5px] font-mono text-[#786f63]">OpenCode · Linux · Yesterday</span></div></div></div><div class="pt-1 pb-1 px-2"><button class="text-[11px] font-mono text-[#786f63] hover:text-[#9b9183] flex items-center space-x-1 transition-colors"><span>Show 14 older...</span></button></div></div></div><div class="space-y-0.5 pt-1"><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">CotaPay</span></div><span class="text-[10px] font-mono px-1 text-[#6cb8d6] bg-[#12100e] border border-[#2d2924] rounded">1 live</span></div><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">Transporte</span></div></div><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">Echo</span></div></div><div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-[#211e1a] cursor-pointer text-[#9b9183] hover:text-[#d8d0c3] text-[12px]"><div class="flex items-center space-x-1.5 truncate"><span class="material-symbols-outlined text-[13px] text-[#786f63]">arrow_right</span><span class="truncate">Fabrica</span></div></div></div></div>
+</div>
+<!-- Footer: Host Quotas & Documentation/Shell Links -->
+<div class="border-t border-[#2d2924] bg-[#181613] p-2.5 space-y-2.5 shrink-0"><div class="space-y-1.5"><div class="text-[10px] uppercase tracking-wider font-mono text-[#786f63] pb-0.5">PLAN LIMITS</div><div class="flex items-center justify-between text-[11px] font-mono"><span class="text-[#786f63] uppercase">Claude 5h Quota</span><span class="text-[#f0a830]">72%</span></div><div class="w-full bg-[#12100e] h-1.5 rounded-full overflow-hidden border border-[#2d2924]"><div class="bg-[#f0a830] h-full w-[72%]"></div></div><div class="flex items-center justify-between text-[11px] font-mono pt-1"><span class="text-[#786f63] uppercase">Codex Quota</span><span class="text-[#9b9183]">18%</span></div><div class="w-full bg-[#12100e] h-1.5 rounded-full overflow-hidden border border-[#2d2924]"><div class="bg-[#9b9183] h-full w-[18%]"></div></div><div class="text-[10px] font-mono text-[#786f63] pt-0.5 text-center">Mac usage unavailable</div></div></div>
+</aside>
+<!-- ================= MAIN READ-ONLY ARCHIVE AREA ================= -->
+<main class="flex-1 flex flex-col h-full bg-[#12100e] overflow-hidden relative">
+<!-- 1. Session Header (Historical read-only indicator) -->
+<section class="border-b border-[#2d2924] bg-[#181613] px-6 py-3 flex items-center justify-between shrink-0">
+<div class="flex flex-col space-y-1">
+<div class="flex items-center space-x-2.5">
+<h1 class="text-[15px] font-semibold text-[#f2ebdf] tracking-tight">Migrate auth to Lucia</h1>
+<!-- Dashed Mono Read-only Badge -->
+<span class="inline-flex items-center text-[10.5px] font-mono text-[#9b9183] border border-dashed border-[#443e37] bg-[#1b1916] px-2 py-0.5 rounded tracking-wider">
+              HISTORY · read-only
+            </span>
+</div>
+<!-- Detailed Metadata String -->
+<div class="text-[11.5px] font-mono text-[#9b9183] flex flex-wrap items-center gap-x-2 gap-y-0.5"><span>Claude</span><span class="text-[#443e37]">·</span><span>Opus 4</span><span class="text-[#443e37]">·</span><span>Mac (MacBook Pro)</span><span class="text-[#443e37]">·</span><span class="text-[#b8ad9e]">⎇ feat/lucia</span><span class="text-[#443e37]">·</span><span>Oct 9, 21:14</span><span class="text-[#443e37]">·</span><span class="text-[#786f63]">48 turns</span><span class="text-[#443e37]">·</span><span class="inline-flex items-center text-[10px] text-[#786f63] border border-[#2d2924] bg-[#141210] px-1.5 py-0.2 rounded">metadata from 14:02</span></div>
+</div>
+<!-- Right Side: Archive Disclosure Dropdown Button (NO live toggle) -->
+<div class="flex items-center space-x-2">
+<button class="px-2.5 py-1 text-[12px] font-headline text-[#9b9183] hover:text-[#d8d0c3] bg-[#211e1a] border border-[#2d2924] rounded flex items-center space-x-1.5 transition-colors">
+<span>Details</span>
+<span class="material-symbols-outlined text-[13px]">expand_more</span>
+</button>
+</div>
+</section>
+<!-- 2. Historical Notice Banner Strip -->
+<section class="bg-[#1a1815] border-b border-[#2d2924] px-6 py-2 flex items-center gap-2.5 text-[12px] text-[#b8ad9e] shrink-0"><span class="w-2 h-2 rounded-full border border-dashed border-[#786f63] shrink-0"></span><div class="flex-1 flex flex-wrap items-center gap-1 leading-tight text-[12px]"><span class="text-[#9b9183]">MacBook Pro is currently unreachable (last contact 14:02). Transcripts cannot be loaded from remote storage.</span><span class="text-[#443e37]">·</span><span class="text-[#f0a830] font-medium hover:underline cursor-pointer inline-flex items-center gap-0.5">Switch to active Linux session →</span></div></section>
+<!-- 3. Conversation Transcript Scroll Area -->
+<div class="flex-1 overflow-y-auto px-4 py-6"><div class="max-w-[760px] mx-auto w-full h-full flex flex-col items-center justify-center text-center px-4 py-12"><div class="bg-[#181613] border border-[#2d2924] rounded-lg p-8 max-w-lg w-full flex flex-col items-center space-y-4 shadow-sm"><div class="w-9 h-9 rounded-full border border-dashed border-[#786f63] flex items-center justify-center text-[#786f63]"><span class="material-symbols-outlined text-[18px]">power_off</span></div><div class="space-y-2"><h2 class="text-[15px] font-semibold text-[#f2ebdf] tracking-tight">Mac is offline</h2><p class="text-[13px] text-[#9b9183] leading-relaxed max-w-md">This conversation lives on the MacBook. It will load when the Mac reconnects. The cockpit does not keep copies of transcripts and will not open it on Linux.</p></div><div class="flex items-center space-x-3 pt-2"><button class="border border-[#38332c] text-[#d8d0c3] hover:bg-[#211e1a] px-3 py-1.5 text-[12px] rounded font-medium transition-colors cursor-pointer">Retry now</button><button class="text-[#9b9183] hover:text-[#d8d0c3] underline text-[12px] transition-colors cursor-pointer">Open PCs settings</button></div><div class="pt-2 border-t border-[#2d2924] w-full"><span class="text-[11px] font-mono text-[#786f63]">Last contact 14:02 · SSH macbook · retrying every 60s</span></div></div></div></div>
+<!-- 4. Historical Action Bar (In place of live input composer) -->
+<section class="shrink-0 p-4 pt-1 bg-gradient-to-t from-[#12100e] via-[#12100e] to-transparent"><div class="max-w-[760px] mx-auto w-full bg-[#181613] border border-[#2d2924] rounded-lg p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md"><div class="flex flex-col"><div class="flex items-center space-x-2"><span class="text-[13px] font-semibold text-[#9b9183]">Continue this session?</span><span class="text-[10px] font-mono px-1.5 py-0.2 bg-[#211e1a] text-[#786f63] border border-[#2d2924] rounded">host offline</span></div><div class="text-[11px] font-mono text-[#786f63] mt-0.5">Host Mac unreachable · feat/lucia · Last contact 14:02</div><div class="mt-1"><a class="text-[11.5px] font-mono text-[#f0a830] hover:underline inline-flex items-center gap-1" href="#">Start in Projeto EAD on Linux… →</a></div></div><div class="flex flex-col items-end space-y-1"><div class="flex items-center space-x-2"><button class="border border-[#2d2924] text-[#786f63] text-[12px] px-3 py-1.5 rounded opacity-40 cursor-not-allowed select-none" disabled="" title="would start on Mac — choose a Linux checkout instead">Start fresh continuation</button><button class="bg-[#211e1a] border border-[#2d2924] text-[#786f63] font-medium text-[12px] px-3.5 py-1.5 rounded flex items-center space-x-1.5 opacity-40 cursor-not-allowed select-none" disabled="" title="Unavailable while Mac is offline"><span class="material-symbols-outlined text-[13px]">play_arrow</span><span>Resume on Mac</span></button></div><span class="text-[10px] text-[#786f63] font-body text-right">Unavailable while Mac is offline · would start on Mac — choose a Linux checkout instead</span></div></div></section>
+</main>
+</div>
+</body></html>

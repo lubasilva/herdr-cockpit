@@ -1,7 +1,14 @@
 # Herdr Cockpit — Unified Mac + Linux Session History
 
 Date: 2026-10-10
-Status: Design approved in conversation; written spec awaiting explicit user review before implementation planning.
+Status: Revision 2 (2026-10-10, Opus architecture review). Awaiting owner approval; no V1 code exists.
+
+> **Revision 2 summary.** §6 (no persisted cockpit index — native stores are the index; only a
+> disposable offline cache of remote listings), §7 (concrete identity signals), §8 (fork-owned
+> remote history route, fork remote bundle, single connection server), §9 (Codex2 = profile),
+> §10 (resume through the existing workspace/tab create endpoints; Codex2 resume unknown),
+> §12.4 (Stitch result) and §15 (phases) changed. Evidence and the full assumption audit:
+> `docs/cockpit/OPUS_ARCHITECTURE_REVIEW.md`. Batches: `docs/cockpit/IMPLEMENTATION_PLAN.md`.
 
 ## 1. Purpose
 
@@ -30,8 +37,8 @@ Secondary principles:
 
 1. **One logical workspace, multiple physical machines.** Linux and Mac are execution locations, not separate products.
 2. **Project first, session second, machine third.** The primary navigation hierarchy is project → sessions. Machine/runtime are metadata badges.
-3. **Index, do not duplicate.** Store session metadata and references; read message history from provider-native stores when the user opens a session.
-4. **Live Herdr and historical provider state are different concerns.** Herdr owns currently running panes/agents. The historical index must survive after panes disappear.
+3. **Reference, do not duplicate.** List sessions from provider-native stores on request and read message history from them when the user opens a session. The cockpit stores no index of its own (§6).
+4. **Live Herdr and historical provider state are different concerns.** Herdr owns currently running panes/agents. History comes from native stores, so it survives after panes disappear.
 5. **Terminal remains first-class.** The cockpit should make routine work easier without preventing direct terminal use.
 6. **No universal control plane in V1.** No scheduler, daemon, automatic provider failover, universal model router or LLM supervisor is justified by this project.
 
@@ -76,7 +83,7 @@ Therefore **Mac remote support is not a custom feature**. Our first step after f
 V1 consists of four tightly related capabilities:
 
 1. **Remote Mac connection using upstream Remote PCs**
-2. **Unified Historical Session Index** across Linux and Mac
+2. **Unified historical session list** across Linux and Mac (computed from native stores, §6)
 3. **Project-centric historical session browser**
 4. **Open historical conversation + decide between native resume and fresh continuation**
 
@@ -189,103 +196,66 @@ The user should be able to filter by machine when needed, but normal navigation 
 
 ---
 
-## 6. Unified Historical Session Index
+## 6. Historical session discovery (revised: no persisted index)
 
-### 6.1 Why a separate index is required
+### 6.1 Native stores are the index
 
-Herdr knows about live panes and sessions, but the desired UX must survive after those panes no longer exist.
+Revision 1 proposed a persisted Unified Historical Session Index. The code audit showed it is
+not needed:
 
-Provider-native histories also live in different locations and formats on different machines.
+- Codex already keeps a SQLite thread index per home (`state_5.sqlite`, `threads`), with cwd,
+  title, git origin/branch, archive and subagent flags.
+- OpenCode keeps `session_v2` + `project` in `opencode.db`.
+- Claude keeps one JSONL per session under `projects/<encoded-cwd>/`; a bounded head scan gives
+  cwd, branch and a title, and `mtime` gives recency.
 
-Therefore a small index is required to answer quickly:
-
-- which project did this session belong to?
-- which machine created it?
-- which runtime/profile owns it?
-- when did it start/update?
-- where is its native source?
-- is it currently live, resumable or historical-only?
+Each machine therefore answers "my recent sessions" **on request** from its own stores, with an
+in-memory cache keyed by file `mtime/size` or `MAX(updated_at)`. There is no cockpit database,
+no replace/dedupe semantics and nothing to migrate or repair.
 
 ### 6.2 Source of truth
 
-The index is **not** the source of truth for conversation contents.
+Native stores are the only authority for sessions and transcripts. Herdr is the authority for
+what is live. The browser merges the two per machine via `live_pane_id`.
 
-It stores references and normalized metadata.
+### 6.3 Wire record
 
-When the user opens a session, the appropriate native adapter reads the native session store on the machine that owns it.
+`HistorySession` in `shared/history.ts` (review §3): opaque `ref {provider, profile, native_id}`,
+title (≤120 chars), cwd, repo identity, branch, model, times, `live_pane_id`, `resumable`.
+No filesystem path is ever sent to the browser; the owning machine re-resolves the ref inside
+its canonical store on every read.
 
-### 6.3 Minimum normalized record
+### 6.4 What is persisted
 
-Conceptual record:
+Only on the connection server, both in `stateDir`, 0600, temp+rename, deletable at any time:
 
-```ts
-interface IndexedSession {
-  id: string;                  // cockpit-stable identity
-  projectId: string;
-  machineId: string;
-  machineLabel: string;
-  runtime: 'claude' | 'codex' | 'codex2' | 'opencode' | 'agy' | 'other';
-  profile?: string;
-  nativeSessionId?: string;
-  nativeSourceRef: string;     // opaque adapter-owned reference, not necessarily a raw path
-  cwd?: string;
-  repoRoot?: string;
-  branch?: string;
-  worktree?: string;
-  startedAt?: string;
-  updatedAt: string;
-  title?: string;
-  liveState: 'live' | 'historical' | 'unknown';
-  resumeCapability: 'native' | 'fresh-only' | 'unknown';
-  confidence: 'verified' | 'inferred';
-}
-```
+1. `history-cache/<machine-id>.json` — the last successful listing of each **remote** PC, used
+   only to draw that PC's rows as stale while it is offline (mirrors upstream's `machines.json`
+   roster snapshot). Metadata only, titles included (O3 approved). Anything served from it carries
+   `freshness: "stale"` plus `as_of`; with no cache the answer is `freshness: "unavailable"`.
+   A cached answer is never treated as current (owner condition on rev 2 approval).
+2. `project-links.json` — the user's explicit "these are the same project" links.
 
-The final schema should follow upstream coding conventions rather than this exact shape if a better existing abstraction exists.
-
-### 6.4 No raw transcript duplication
-
-V1 must not store:
-
-- complete Claude JSONL copies;
-- complete Codex rollout copies;
-- full OpenCode conversation copies;
-- screenshots/base64;
-- raw tool logs;
-- private model thinking;
-- credentials or auth files.
-
-If caching is later necessary for performance, it must be bounded and disposable; provider-native storage remains authoritative.
+No transcript text, tool output or image is ever copied.
 
 ---
 
-## 7. Project identity and grouping
+## 7. Project identity and grouping (revised)
 
-This is the most important data-model decision.
+Identity is computed **on the machine that owns the session** and merged in the browser.
 
-A session belongs to a logical project, not merely to a machine path.
+| Signal | Source | Use |
+|---|---|---|
+| Normalized remote `host/owner/repo` | Codex `git_origin_url`, else `git -C <cwd> config --get remote.origin.url` | equal on two PCs → **same project** |
+| Root commit | `git rev-list --max-parents=0 HEAD`; OpenCode `project.id` if Batch 0 confirms | equal without a remote match → **suggested link** only |
+| Explicit link | `project-links.json` | user-confirmed merge |
+| `machine_id + toplevel` (or cwd) | fallback | machine-scoped project |
 
-Project identity resolution should use deterministic signals in this order where available:
-
-1. Git repository identity / canonical repository root;
-2. known Herdr workspace root;
-3. configured project alias;
-4. normalized local directory as a last resort.
-
-Mac and Linux paths may differ while representing the same project.
-
-Example:
-
-```text
-Linux: /home/lucas/Projects/projeto-ead
-Mac:   /Users/ipremium/Projects/projeto-ead
-```
-
-Both must map to one logical `Projeto EAD` project if their repository/workspace identity proves equivalence.
-
-The implementation must not merge two projects merely because their folder names match.
-
-Where identity cannot be proved, show separate projects until the user explicitly links them.
+Rules: never merge by folder basename; a fork or template sharing a root commit is never merged
+automatically; worktrees and branches group under their repo with a branch badge; a vanished
+cwd keeps the identity recorded natively or falls back to machine scope; git probes have a 2 s
+timeout and a 10-minute cache per cwd. Grouping is a pure client function
+(`groupProjects`, `src/lib/history.ts`).
 
 ---
 
@@ -306,29 +276,37 @@ Browser
 
 The browser should not need direct filesystem or SSH access.
 
-### 8.2 Remote historical adapters
+### 8.2 Remote history route
 
-Historical session enumeration and transcript loading must execute on the machine that owns the provider store.
-
-For Mac, that means the existing remote bridge/API should expose or be extended with narrowly scoped session-index/session-read endpoints rather than copying Mac stores to Linux.
-
-Requirements:
-
-- read-only for historical discovery;
-- machine-scoped responses;
-- no arbitrary filesystem browsing exposed to the browser;
-- provider adapters validate canonical store locations;
-- malformed/unknown native formats fail closed.
+The same `server/history/*` code runs on every PC (the remote bridge runs the same server code).
+The connection server reaches a remote PC through a fork-owned route,
+`GET /api/history/machines/:id/<sub>`, which takes `MachineManager.endpoint(id)` and the bridge
+bearer exactly like `server/machine-api.ts` does, with an explicit allowlist of `<sub>`.
+`MACHINE_PROXY_PATH` is not edited. On the remote side `/api/history/` is added to the
+`bridgePath` gate (`server/index.ts:1429`) so the bridge token is accepted.
 
 ### 8.3 Disconnected machine behavior
 
-If the Mac is offline:
+- Listing: cached rows, `freshness: "stale"`, `as_of` (no cache → empty, `freshness: "unavailable"`); drawn dim with a dashed glyph and "last seen".
+- Conversation, tool output, image, resume check: 503 `machine_offline`; inline "Mac is offline"
+  state; no Linux fallback copy (there is none).
+- Live status that was "needs you" becomes "unknown" — never shown as blocked while unreachable.
+- Actions disabled with reasons; an explicit "Start in <project> on <other PC>…" opens the New
+  workspace dialog prefilled. Nothing happens automatically.
 
-- last indexed metadata may remain visible;
-- UI must mark the machine/session as unavailable/stale;
-- transcript loading that requires the Mac must fail clearly;
-- the cockpit must not fabricate cached transcript content as current;
-- live actions must be disabled.
+### 8.4 Remote bundle deployment (new, required)
+
+The Mac bridge runs a **remote bundle**, which by default is upstream's release bundle. Fork
+routes do not exist there until the fork ships its own bundle:
+
+- build with `bun run build:remote darwin-arm64` (works from Linux) and point the connection
+  server at it with a local `remote-bundles/manifest-<os>-<cpu>.json` or `HERDR_WEB_BUNDLE_MANIFEST`;
+- bridge currency is an exact `bundle_version` string match and `newerBundle` only accepts
+  `^\d+$`; the fork's version rule (keep upstream's number + local manifest, or a reserved
+  number) is decided in Batch 0 and re-applied at every upstream sync;
+- exactly **one connection server** manages the Mac. The upstream install on `127.0.0.1:7317`
+  must be disconnected from the Mac or stopped, or the two will keep replacing each other's bridge;
+- deploying is an external effect: owner-approved, logged `outcome_unknown` until verified.
 
 ---
 
@@ -342,7 +320,9 @@ Use the upstream/native Claude history reader and session identity logic. Histor
 
 ### Codex and Codex2
 
-Treat `codex` and `codex2` as separate profiles when their storage/config homes differ, while still presenting both under the same project.
+`codex2` is `codex` with `CODEX_HOME=~/.codex-pro-2`. Model it as provider `codex` with
+`profile` = the home's directory name, discovered by the same rule `server/usage.ts` uses
+(`CODEX_HOME`, `~/.config/codex`, `~/.codex`, every `~/.codex-*`). "Codex2" is a display alias.
 
 Reuse upstream Codex rollout discovery rather than inventing another parser.
 
@@ -360,33 +340,34 @@ Unknown agents remain usable through the existing Herdr live terminal. Historica
 
 ---
 
-## 10. Resume semantics
+## 10. Resume semantics (revised)
 
-V1 must distinguish three cases.
+No new mutating endpoint. Resume and fresh continuation use the existing
+`POST /api/workspace/create` / `/api/tab/create` (`agent: { kind, args }`), already allowlisted
+for remote PCs. The only new endpoint is a read-only `GET /api/history/resume-check`.
 
 ### 10.1 Live Herdr agent
 
-Prompt goes to the existing live agent using upstream Herdr behavior.
+Row has `live_pane_id` → open the pane; normal Send. A historical row whose session is live
+elsewhere offers **Go to live pane**, never a second agent.
 
-### 10.2 Native historical resume available
+### 10.2 Native resume
 
-The cockpit may invoke the provider's supported native resume flow on the original machine/project.
+On the session's own PC and cwd: `claude --resume <id>`, `codex resume <id>`,
+`opencode --session <id>` (exact flags confirmed in Batch 0). The check is re-run immediately
+before the create call. No provider, model or machine is ever switched silently.
 
-Requirements:
+### 10.3 Fresh continuation
 
-- explicit destination machine/runtime;
-- no hidden provider switch;
-- no silent model switch;
-- native session ID is validated before use;
-- failure leaves the original history untouched.
+New agent of the same kind in the project's checkout on the chosen PC, with no transcript or
+summary injected. Used when native resume is unavailable (`cwd_missing`, `session_missing`,
+`unsupported_profile`) or when the user prefers it.
 
-### 10.3 Native resume unavailable or unsafe
+### 10.4 Codex2 (UNKNOWN)
 
-Offer fresh continuation.
-
-V1 fresh continuation may initially start an empty session in the same project. A future increment can integrate `task-resume` to inject a bounded recovery packet.
-
-The complete historical transcript must never be automatically replayed into the fresh session.
+herdr `agent.start` has no environment parameter, so `codex resume <id>` would run against the
+default home. Until Batch 0 finds a supported way, non-default Codex homes are `fresh-only`, with
+a "copy resume command" affordance.
 
 ---
 
@@ -402,7 +383,7 @@ We should reuse this mechanism.
 
 ### 11.2 Future unified usage
 
-After the Mac remote integration and historical index are stable, add machine-aware usage aggregation if upstream does not already provide it.
+After the Mac remote integration and history listing are stable, add machine-aware usage aggregation if upstream does not already provide it.
 
 Desired normalized view:
 
@@ -493,6 +474,13 @@ Before implementation of the redesign, generate and review:
 
 Do not ask Stitch to redesign every page at once.
 
+### 12.4 Result (2026-10-10)
+
+Screens 1–3 were generated in Stitch project `3911610958165352778`; PNG/HTML in
+`docs/cockpit/stitch/`. Direction "lamp-lit graphite console" uses the existing upstream tokens
+(no global restyle). Prompts, rationale, artifacts to ignore and owner decisions O1–O8:
+`docs/cockpit/STITCH_DIRECTION.md`. **Not approved yet; do not implement the redesign.**
+
 The design must account for existing upstream features rather than hiding them:
 
 - chat/terminal toggle;
@@ -509,7 +497,7 @@ The design must account for existing upstream features rather than hiding them:
 
 ### Session discovery errors
 
-- malformed native session → skip and record diagnostic, do not crash index;
+- malformed native session → skip and record diagnostic, do not fail the listing;
 - missing native source → mark unavailable;
 - ambiguous project identity → do not auto-merge;
 - duplicate detection → prefer stable native identity + machine ID;
@@ -596,65 +584,22 @@ A successful first vertical slice is:
 5. Historical Claude/Codex sessions from both machines appear beneath it.
 6. User opens an old Mac Claude session and reads its native conversation.
 7. User switches to an active Linux Codex session and sends a harmless prompt.
-8. Closing/restarting the browser does not lose historical index metadata.
+8. Closing/restarting the browser or server loses nothing: history is re-read from native stores; offline PCs reappear from the stale cache.
 9. Disconnecting Mac leaves its historical rows visible as unavailable/stale rather than deleting them.
 
 ---
 
-## 15. Phased delivery
+## 15. Phased delivery (revised)
 
-### Phase 1 — Upstream baseline and Mac connection
+Batch details: `docs/cockpit/IMPLEMENTATION_PLAN.md`.
 
-- fork upstream;
-- preserve `upstream` remote;
-- clone to Linux;
-- add as normal Herdr project/workspace;
-- configure Mac through existing Remote PCs;
-- run upstream tests and establish clean baseline;
-- document gaps against desired cockpit.
-
-No visual redesign yet.
-
-### Phase 2 — Unified session index
-
-- session metadata contracts;
-- project identity resolver;
-- local Linux indexing;
-- remote Mac indexing through bridge;
-- supported provider adapters;
-- persistent metadata cache/index;
-- historical session sidebar.
-
-### Phase 3 — Historical conversation UX
-
-- open native historical transcript;
-- project/session filters;
-- live/historical distinction;
-- native resume capability detection;
-- fresh continuation fallback.
-
-### Phase 4 — Stitch-led visual pass
-
-- produce one approved main-screen direction;
-- implement only that screen/system first;
-- regression test existing live functionality;
-- propagate visual system only after owner approval.
-
-### Phase 5 — Usage/telemetry enhancement
-
-- audit upstream subscription usage end-to-end;
-- add remote-machine usage if actually missing;
-- aggregate by account/machine without double counting;
-- show exact/estimated/unknown provenance;
-- no automatic routing/failover.
-
-### Phase 6 — Optional recovery integration
-
-Only if still useful after real usage:
-
-- expose `task-resume` packet in fresh-continuation flow;
-- never auto-inject full transcript;
-- keep recovery deterministic and bounded.
+1. **Gate** — Batch 0 spike: resume flags, Codex2 env, OpenCode project id, Mac stores, bundle
+   dry run, single connection server decision.
+2. **Server history** — Batches 1–6: contract, identity, listers, local routes, remote route,
+   offline cache, links.
+3. **Client** — Batches 7–9: data layer, ChatView seam, UI for the three approved states.
+4. **Deploy + accept** — Batches 10–11 with the owner.
+5. **Follow-on** — usage across PCs (T1), then anything in §4.2.
 
 ---
 
@@ -715,7 +660,7 @@ Token savings are not a success criterion for this product.
 
 **Do not build:** new Herdr runtime, new terminal multiplexer, scheduler/control plane, universal router or copied transcript database.
 
-**First custom feature:** unified historical session index grouped by logical project across Mac and Linux.
+**First custom feature:** unified historical session list grouped by logical project across Mac and Linux.
 
 **First infrastructure step:** configure existing upstream Remote PCs against the Mac and prove one-browser/two-machine operation.
 
