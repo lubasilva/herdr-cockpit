@@ -23,12 +23,13 @@ Read first, completely:
 1. `AGENTS.md`
 2. `server/AGENTS.md`
 3. `src/AGENTS.md`
-4. `docs/cockpit/DESIGN.md`
-5. `docs/cockpit/IMPLEMENTATION_PLAN.md`
-6. upstream `README.md`
-7. upstream `DESIGN.md`
-8. `docs/remote-pcs.md`
-9. relevant chat/session/usage docs and code you discover
+4. `docs/cockpit/CURRENT_STATE.md`
+5. `docs/cockpit/DESIGN.md`
+6. `docs/cockpit/IMPLEMENTATION_PLAN.md`
+7. upstream `README.md`
+8. upstream `DESIGN.md`
+9. `docs/remote-pcs.md`
+10. relevant chat/session/usage docs and code you discover
 
 Also inspect the actual repository code before agreeing with any proposed file/interface names.
 
